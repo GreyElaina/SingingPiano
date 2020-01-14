@@ -60,7 +60,7 @@ def load_specgram(framerate, channels, NFFT=2400, NT=5):
     except MemoryError:
         return None
 
-def gen_mapping(specgram, limvel=1, NFFT=2400):
+def gen_mapping(specgram, framerate, limvel=1, NFFT=2400):
     result = []
     for i in range(len(specgram[0][0])):
         imi = []
@@ -72,17 +72,15 @@ def gen_mapping(specgram, limvel=1, NFFT=2400):
         for j in range(128):
             imi.append(
                 numpy.sqrt(numpy.sqrt(
-                    interpolation(n0i, const.pitch[j] / Fs * NFFT)
+                    interpolation(n0i, const.pitch[j] / framerate * NFFT)
                 )) * 4 / limvel)
         result.append(imi)
     return result
     
 def gen_midifile(mapping_list, output_filename, type=1, lim=8, NT=5, BPM=500):
     notec = 0
-    last_col = 0
     tempo = 500
     ratio = 2
-    inst = 0
     offlist = [[]] * 8
 
     tempo = mido.bpm2tempo(BPM)
