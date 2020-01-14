@@ -135,7 +135,7 @@ def gen_midifile(mapping_list, output_filename, type=1, lim=8, NT=5, BPM=500):
         m1 = tc[l] - temp_int
         tc[l] = 0
         first_row[l] = False
-        oldlist[l].append(
+        list_old[l].append(
             mido.Message('note_on',
                 note=row,
                 time=m1,
@@ -150,8 +150,10 @@ def gen_midifile(mapping_list, output_filename, type=1, lim=8, NT=5, BPM=500):
             )
         )
 
-        oldlist[l].extend(offlist[num])
+        list_old[l].extend(offlist[num])
         offlist[l] = []
+    
     for i in list_old:
         i.append(mido.MetaMessage("end_of_track"))
+
     midi.save(output_filename)
