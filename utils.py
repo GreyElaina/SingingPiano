@@ -75,8 +75,19 @@ def gen_mapping(specgram, limvel=1, NFFT=2400):
                     interpolation(n0i, const.pitch[j] / Fs * NFFT)
                 )) * 4 / limvel)
         result.append(imi)
+    return result
     
-def gen_midifile(mapping_list, type=1):
+def gen_midifile(mapping_list, output_filename, type=1, lim=8, NT=5, BPM=500):
+    notec = 0
+    last_col = 0
+    tempo = 500
+    ratio = 2
+    inst = 0
+    offlist = [[]] * 8
+
+    tempo = mido.bpm2tempo(BPM)
+    temp_int = int(NT * (tempo / 500.0) + 0.5)
+
     midi = mido.MidiFile(type=type)
     for _ in range(8):
         midi.add_track()
@@ -84,4 +95,63 @@ def gen_midifile(mapping_list, type=1):
     tc = [0] * 8
     num_i = len(mapping_list)
     list_old = [midi.tracks[i] for i in range(8)]
-    
+    for column in range(num_i):
+        for row in range(len(mapping_list[0])):
+            vol = mapping_list[column][row]
+            if vol > lim:
+                for l in range(8):
+                    if vol <= 32 + 32 * l and vol > 32 * l:
+                        notec += 1
+                        _v = int(vol / ratio + 0.5)
+                        m1, m2 = 0, 0
+                        if first_row[l]:
+                            m1 = tc[l] - temp_int
+                            m2 = temp_int
+                            tc[l] = 0
+                            first_row[l] = False
+                        list_old[l].append(
+                            mido.Message("note_on",
+                                note=row,
+                                time=m1,
+                                velocity=_v if _v < 128 else 127
+                            )
+                        )
+                        offlist[l].append(
+                            mido.Message("note_off",
+                                note=row,
+                                time=m2,
+                                velocity=_v if _v < 128 else 127
+                            )
+                        )
+            else:
+                continue
+        for num in range(8):
+            tc[num] += temp_int
+            list_old[num].extend(offlist[num])
+            offlist[num] = []
+            first_row[num] = True
+        
+    for l in range(8):
+        m1 = tc[l] - temp_int
+        tc[l] = 0
+        first_row[l] = False
+        oldlist[l].append(
+            mido.Message('note_on',
+                note=row,
+                time=m1,
+                velocity=1
+            )
+        )
+        offlist[l].append(
+            mido.Message('note_off',
+                note=row,
+                time=0,
+                velocity=1
+            )
+        )
+
+        oldlist[l].extend(offlist[num])
+        offlist[l] = []
+    for i in list_old:
+        i.append(mido.MetaMessage("end_of_track"))
+    midi.save(output_filename)
