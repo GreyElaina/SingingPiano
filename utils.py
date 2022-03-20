@@ -40,11 +40,11 @@ def setupChannels(wavefile, channel=None):
     result = numpy.zeros(num_frames)
     for i in range(num_frames * 4):
         if i % 4 == 0:
-            offset = i // 4
             value = wavefile.readframes(1)
             if not channel:
-                left = value[0: sample_width]
+                left = value[:sample_width]
                 right = value[sample_width: 2 * sample_width]
+                offset = i // 4
                 result[offset] = \
                     round(struct.unpack(packtype, left)[0] +
                         struct.unpack(packtype, right)[0]
@@ -63,17 +63,11 @@ def load_specgram(framerate, channels, NFFT=2400, NT=5):
 def gen_mapping(specgram, framerate, limvel=1, NFFT=2400):
     result = []
     for i in range(len(specgram[0][0])):
-        imi = []
-        n0i = []
+        n0i = [specgram[0][k][i] for k in range(len(specgram[0]))]
 
-        for k in range(len(specgram[0])):
-            n0i.append(specgram[0][k][i])
-
-        for j in range(128):
-            imi.append(
-                numpy.sqrt(numpy.sqrt(
+        imi = [numpy.sqrt(numpy.sqrt(
                     interpolation(n0i, const.pitch[j] / framerate * NFFT)
-                )) * 4 / limvel)
+                )) * 4 / limvel for j in range(128)]
         result.append(imi)
     return result
     
@@ -96,39 +90,38 @@ def gen_midifile(mapping_list, output_filename, type=1, lim=8, NT=5, BPM=500):
     for column in range(num_i):
         for row in range(len(mapping_list[0])):
             vol = mapping_list[column][row]
-            if vol > lim:
-                for l in range(8):
-                    if vol <= 32 + 32 * l and vol > 32 * l:
-                        notec += 1
-                        _v = int(vol / ratio + 0.5)
-                        m1, m2 = 0, 0
-                        if first_row[l]:
-                            m1 = tc[l] - temp_int
-                            m2 = temp_int
-                            tc[l] = 0
-                            first_row[l] = False
-                        list_old[l].append(
-                            mido.Message("note_on",
-                                note=row,
-                                time=m1,
-                                velocity=_v if _v < 128 else 127
-                            )
-                        )
-                        offlist[l].append(
-                            mido.Message("note_off",
-                                note=row,
-                                time=m2,
-                                velocity=_v if _v < 128 else 127
-                            )
-                        )
-            else:
+            if vol <= lim:
                 continue
+            for l in range(8):
+                if vol <= 32 + 32 * l and vol > 32 * l:
+                    notec += 1
+                    _v = int(vol / ratio + 0.5)
+                    m1, m2 = 0, 0
+                    if first_row[l]:
+                        m1 = tc[l] - temp_int
+                        m2 = temp_int
+                        tc[l] = 0
+                        first_row[l] = False
+                    list_old[l].append(
+                        mido.Message("note_on",
+                            note=row,
+                            time=m1,
+                            velocity=_v if _v < 128 else 127
+                        )
+                    )
+                    offlist[l].append(
+                        mido.Message("note_off",
+                            note=row,
+                            time=m2,
+                            velocity=_v if _v < 128 else 127
+                        )
+                    )
         for num in range(8):
             tc[num] += temp_int
             list_old[num].extend(offlist[num])
             offlist[num] = []
             first_row[num] = True
-        
+
     for l in range(8):
         m1 = tc[l] - temp_int
         tc[l] = 0
@@ -150,7 +143,7 @@ def gen_midifile(mapping_list, output_filename, type=1, lim=8, NT=5, BPM=500):
 
         list_old[l].extend(offlist[num])
         offlist[l] = []
-    
+
     for i in list_old:
         i.append(mido.MetaMessage("end_of_track"))
 

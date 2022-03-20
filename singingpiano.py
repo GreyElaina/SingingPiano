@@ -2,8 +2,14 @@
 import locale#from LANG_zh_CN import *
 ver='1.3.0.1'
 date='2020/1/12'
-M_OICQ=str(3080968787)
-M_select_lang=r'''
+import sys
+import math
+from tqdm import trange
+custom_LANG=False
+rootdir = sys.argv[0]
+args = sys.argv[1:]
+isUI = not args
+M_select_lang = r'''
 Lost language file. 
      _,----,_     
     /  /  \  \
@@ -13,7 +19,8 @@ Lost language file.
     \_ \  / _/
       '----'        
 Please (re)type the language name (Example:en_US):'''
-M_lostthislanguage=r'''
+
+M_lostthislanguage = r'''
      _,----,_     
     /        \
    [   |  |   ]
@@ -23,74 +30,61 @@ M_lostthislanguage=r'''
       '----'
 According language file doesn't exist:'''
 
-import sys
-import math
-from tqdm import trange
-rootdir=sys.argv[0]
-args=sys.argv[1:]
-isUI=True#DEFAULT
-custom_LANG=False
-if args:
-    isUI=False
-    
+if not isUI and '--DEBUG' in args:
+    while True:
+        print('DEBUG MODE:')
+        print('CUSTOM LANGUAGE:1\tEXIT:0')
+        u_in=input(':')
+        if u_in == '0':
+            exit()
+        elif u_in == '1':
+            custom_LANG = True
+            isUI = True
+            while True:
+                LANG2CONF=input(M_select_lang)
+                try:
+                    lang_file = open(f'LANG.{LANG2CONF}.ini', 'r')
+                    #lang_conf_W=open('LANG.conf','w')
+                    #lang_conf_W.write(LANG2CONF)
+                    exec(lang_file.read(),globals())
 
-if not isUI:
-    if '--DEBUG' in args:
-        while True:
-            print('DEBUG MODE:')
-            print('CUSTOM LANGUAGE:1\tEXIT:0')
-            u_in=input(':')
-            if u_in == '0':
-                exit()
-            elif u_in == '1':
-                custom_LANG = True
-                isUI = True
-                while True:
-                    LANG2CONF=input(M_select_lang)
-                    try:
-                        lang_file=open('LANG.'+LANG2CONF+'.ini','r')
-                        #lang_conf_W=open('LANG.conf','w')
-                        #lang_conf_W.write(LANG2CONF)
-                        exec(lang_file.read(),globals())
-                        
-                        
-                        #lang_conf_W.close()
-                        break
-                    except Exception as err:
-                        print(M_lostthislanguage+'LANG.'+LANG2CONF+'.ini')
-                        print('Error code:',err)
-                break
+
+                    #lang_conf_W.close()
+                    break
+                except Exception as err:
+                    print(f'{M_lostthislanguage}LANG.{LANG2CONF}.ini')
+                    print('Error code:',err)
+            break
 
 try:
     if not custom_LANG:
         envlocale = locale.getdefaultlocale()[0]
-        lang_file=open(rootdir+'/../LANG.'+envlocale+'.ini','r')
+        lang_file = open(f'{rootdir}/../LANG.{envlocale}.ini', 'r')
     exec(lang_file.read(),globals())
     lang_file.close()
 except Exception as err__:
     print('Lost language for your area.\nError code:',err__)
     try:
-        lang_conf=open(rootdir+'/../LANG.conf','r')
-        lang_file=open(rootdir+'/../LANG.'+lang_conf.read()+'.ini','r')
-        exec(lang_file.read(),globals())
-        lang_file.close()
+        lang_conf = open(f'{rootdir}/../LANG.conf', 'r')
+        with open(f'{rootdir}/../LANG.{lang_conf.read()}.ini', 'r') as lang_file:
+            exec(lang_file.read(),globals())
     except Exception as err_:
         print('Error code:',err_)
         #set_LANG()
         while True:
             LANG2CONF=input(M_select_lang)
             try:
-                lang_file=open(rootdir+'/../LANG.'+LANG2CONF+'.ini','r')
-                lang_conf_W=open(rootdir+'/../LANG.conf','w')
-                lang_conf_W.write(LANG2CONF)
-                exec(lang_file.read(),globals())
-                lang_file.close()
-                lang_conf_W.close()
+                lang_file = open(f'{rootdir}/../LANG.{LANG2CONF}.ini', 'r')
+                with open(f'{rootdir}/../LANG.conf', 'w') as lang_conf_W:
+                    lang_conf_W.write(LANG2CONF)
+                    exec(lang_file.read(),globals())
+                    lang_file.close()
                 break
             except Exception as err:
-                print(M_lostthislanguage+'LANG.'+LANG2CONF+'.ini','r')
+                print(f'{M_lostthislanguage}LANG.{LANG2CONF}.ini', 'r')
                 print('Error code:',err)
-    
+
+M_OICQ = str(3080968787)
 readme=M_readme1+M_OICQ+M_readme2    
 
 
@@ -132,15 +126,16 @@ if not isUI:
         NFFT=int(rarg('-n',2400))
         lim=int(rarg('-l',8))
         channelLR=rarg("-ch","")
-    
+
         print(M_argstip1+name+M_argstip2+str(
             NT)+M_argstip3+str(NFFT)+M_argstip4+str(lim))
-        outfile=name+'-T'+str(NT)+'N'+str(NFFT)+'L'+str(lim)+'V'+ver+channelLR+'.mid'
+        outfile = f'{name}-T{NT}N{NFFT}L{lim}V{ver}{channelLR}.mid'
         print(M_outfile+outfile)
         tempo=mido.bpm2tempo(BPM)
         limvel=1
 
-        
+
+limvel=1
 while isUI:
     print(readme,M_versionis+ver+'    '+date+'\n\n')
     _name=input(M_pleaseinput_filename)
@@ -165,16 +160,15 @@ while isUI:
         lim=8
     try:
         channelLR=input("请键入声道选项:")
-        if not channelLR == "L" and not channelLR == "R":
+        if channelLR not in ["L", "R"]:
             raise SyntaxError
     except SyntaxError:
         channelLR=""
-    
+
     """try:
         limvel=eval(input("请键入输出MIDI力度的压限倍数:"))
     except SyntaxError:
         """
-    limvel=1
     print()
     try:
         print(M_bugs[ver])
@@ -183,7 +177,7 @@ while isUI:
     print()
     print(M_argstip1+name+M_argstip2+str(
         NT)+M_argstip3+str(NFFT)+M_argstip4+str(lim))
-    outfile=name+'-T'+str(NT)+'N'+str(NFFT)+'L'+str(lim)+'V'+ver+channelLR+'.mid'
+    outfile = f'{name}-T{NT}N{NFFT}L{lim}V{ver}{channelLR}.mid'
     print(M_outfile+outfile)
     tempo=mido.bpm2tempo(BPM)
     if NT*tempo%500 != 0:
@@ -201,9 +195,8 @@ while isUI:
                     tempo=mido.bpm2tempo(t_r)
                     if tempo*NT%500==0:
                         break
-                    else:
-                        print(M_invalid_equation)
-                        continue
+                    print(M_invalid_equation)
+                    continue
             elif u_in == '2':
                 while True:
                     try:
@@ -214,9 +207,8 @@ while isUI:
                     NT=NT_r
                     if tempo*NT%500==0:
                         break
-                    else:
-                        print(M_invalid_equation)
-                        continue
+                    print(M_invalid_equation)
+                    continue
             elif u_in == '0':
                 while True:
                     try:
@@ -238,7 +230,6 @@ while isUI:
     okay=input(M_yes_or_cancel).upper()
     if okay == 'N':
         print(M_canceled)
-        continue
     else:
         break
     
